@@ -24,7 +24,7 @@ class ProductListSerializer(serializers.ModelSerializer):
     brand_name = serializers.CharField(source='brand.name')
     class Meta:
         model=models.Product
-        fields=['id', 'category', 'brand', 'brand_name', 'vendor', 'title', 'slug', 'detail', 'price', 'product_ratings', 'image']
+        fields=['id', 'category', 'subcategory', 'brand', 'brand_name', 'vendor', 'title', 'slug', 'detail', 'price', 'product_ratings', 'image']
 
     def __init__(self, *args, **kwargs):
         super(ProductListSerializer, self).__init__(*args, **kwargs)
@@ -38,10 +38,12 @@ class ProductImageSerializer(serializers.ModelSerializer):
 class ProductDetailSerializer(serializers.ModelSerializer):
     product_ratings=serializers.StringRelatedField(many=True, read_only=True)
     product_images = ProductImageSerializer(many=True, read_only=True)
+    main_category_name = serializers.CharField(source='category.main_category.name')
+
     class Meta:
         many=True
         model=models.Product
-        fields=['id', 'category', 'brand', 'vendor', 'title', 'slug', 'detail', 'price', 'product_ratings', 'product_images']
+        fields=['id', 'category', 'subcategory', 'main_category_name', 'brand', 'vendor', 'title', 'slug', 'detail', 'price', 'product_ratings', 'product_images']
 
     def __init__(self, *args, **kwargs):
         super(ProductDetailSerializer, self).__init__(*args, **kwargs)
@@ -103,85 +105,44 @@ class ProductRatingSerializer(serializers.ModelSerializer):
         self.Meta.depth = 1
 
 # Sub Category
-# class SubCategorySerializer(serializers.ModelSerializer):
-#     subcategory_product = ProductListSerializer(many=True, read_only=True)
-#     class Meta:
-#         model = models.SubCategory
-#         fields = '__all__'
-# class SubCategorySerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model=models.SubCategory
-#         fields = ('id', 'name', 'image', 'slug')
-
 class SubCategorySerializer(serializers.ModelSerializer):
+    category_name = serializers.CharField(source='category.name')
+    main_category_name = serializers.CharField(source='category.main_category.name')
+    products = serializers.SerializerMethodField()
     class Meta:
         model=models.SubCategory
-        fields=['id', 'category', 'name', 'image', 'slug']
+        fields=['id', 'name', 'image', 'slug', 'category', 'category_name', 'main_category_name', 'products']
 
-    def __init__(self, *args, **kwargs):
-        super(SubCategorySerializer, self).__init__(*args, **kwargs)
-        self.Meta.depth = 1
+    def get_products(self, obj):
+        products = obj.product_set.all()
+        return ProductListSerializer(products, many=True).data
 
-# class SubCategoryDetailSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model=models.SubCategory
-#         fields=['id', 'category', 'name', 'image', 'slug']
+    # def __init__(self, *args, **kwargs):
+    #     super(SubCategorySerializer, self).__init__(*args, **kwargs)
+    #     self.Meta.depth = 1
 
-#     def __init__(self, *args, **kwargs):
-#         super(SubCategoryDetailSerializer, self).__init__(*args, **kwargs)
-#         self.Meta.depth = 1
-
-# Category
-# class CategorySerializer(serializers.ModelSerializer):
-#     sub_categories = SubCategorySerializer(many=True, read_only=True)
-#     class Meta:
-#         model=models.Category
-#         fields = '__all__'
-#         # fields = ('id', 'name', 'slug', 'sub_categories')
-
-# class CategorySerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model=models.Category
-#         fields=['id', 'main_category', 'name', 'slug']
-
-#     def __init__(self, *args, **kwargs):
-#         super(CategorySerializer, self).__init__(*args, **kwargs)
-#         self.Meta.depth = 1
-
+# Category        
 class CategorySerializer(serializers.ModelSerializer):
+    main_category_name = serializers.CharField(source='main_category.name')
     subcategories = serializers.SerializerMethodField()
+    products = serializers.SerializerMethodField()
 
     class Meta:
-        model=models.Category
-        fields=['id', 'main_category', 'name', 'slug', 'subcategories']
+        model = models.Category
+        # fields = ('id', 'name', 'slug', 'subcategories', 'products')
+        fields = ('id', 'name', 'slug', 'main_category', 'main_category_name', 'subcategories', 'products')
 
-    def get_subcategories(self, obj):
-        show_subcategories = self.context.get('show_subcategories', False)
-        if not show_subcategories:
-            return None
-
-        subcategories = models.SubCategory.objects.filter(category=obj)
-        serializer = SubCategorySerializer(instance=subcategories, many=True)
+    def get_subcategories(self, instance):
+        subcategories = instance.subcategories.all()
+        serializer = SubCategorySerializer(subcategories, many=True)
         return serializer.data
 
+    def get_products(self, obj):
+        products = obj.product_set.all()
+        return ProductListSerializer(products, many=True).data
 
-# class CategoryDetailSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model=models.Category
-#         fields=['id', 'main_category', 'name', 'slug']
-
-#     def __init__(self, *args, **kwargs):
-#         super(CategoryDetailSerializer, self).__init__(*args, **kwargs)
-#         self.Meta.depth = 1
 
 # Main Category
-# class MainCategorySerializer(serializers.ModelSerializer):
-#     categories = CategorySerializer(many=True, read_only=True)
-#     class Meta:
-#         model = models.MainCategory
-#         fields = '__all__'
-#         # fields = ('id', 'name', 'image', 'slug', 'categories')
-
 class MainCategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = models.MainCategory
@@ -197,15 +158,6 @@ class MainCategoryDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.MainCategory
         fields = ['id', 'name', 'image', 'slug', 'categories']
-
-# class MainCategoryDetailSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model=models.MainCategory
-#         fields=['id', 'name', 'image', 'slug']
-
-#     def __init__(self, *args, **kwargs):
-#         super(MainCategoryDetailSerializer, self).__init__(*args, **kwargs)
-#         self.Meta.depth = 1
 
 # Brand
 class BrandSerializer(serializers.ModelSerializer):

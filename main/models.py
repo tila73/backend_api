@@ -38,7 +38,7 @@ class Category(models.Model):
 
 # Sub Category
 class SubCategory(models.Model):
-    category = models.ForeignKey(Category, on_delete=models.CASCADE)
+    category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name='subcategories')
     name = models.CharField(max_length=100)
     image = models.ImageField(upload_to='sub_category_images/', null=True)
     slug = models.CharField(max_length=150, null=True)
@@ -57,11 +57,12 @@ class Brand(models.Model):
 
 # Product
 class Product(models.Model):
-    category=models.ForeignKey(Category, on_delete=models.SET_NULL,null=True, related_name='category_product')
+    category=models.ForeignKey(Category, on_delete=models.SET_NULL,null=True)
+    subcategory=models.ForeignKey(SubCategory, on_delete=models.SET_NULL,null=True)
     brand = models.ForeignKey(Brand, on_delete=models.CASCADE)
     vendor=models.ForeignKey(Vendor, on_delete=models.SET_NULL, null=True)
-    title=models.CharField(max_length=200)
-    slug=models.CharField(max_length=300, unique=True, null=True)
+    title=models.CharField(max_length=250)
+    slug=models.CharField(max_length=250, unique=True, null=True)
     detail=models.TextField(null=True)
     price=models.FloatField()
     image=models.ImageField(upload_to='product_images/', null=True)
@@ -80,7 +81,7 @@ class ProductImage(models.Model):
 # Customer Model
 class Customer(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    mobile = models.PositiveBigIntegerField()
+    mobile = models.PositiveBigIntegerField(unique=True)
 
     def __str__(self):
         return self.user.username
@@ -126,11 +127,17 @@ class Cart(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    def total_price(self):
+        return sum([item.total_price() for item in self.items.all()])
+
 # Cart item
 class CartItem(models.Model):
     cart = models.ForeignKey(Cart, on_delete=models.CASCADE)
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     quantity = models.PositiveIntegerField()
+
+    def total_price(self):
+        return self.product.price * self.quantity
 
 # Payment
 class Payment(models.Model):
