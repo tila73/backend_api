@@ -4,14 +4,17 @@ from . import serializers
 from . import models
 from django.shortcuts import get_object_or_404
 from rest_framework.response import Response
-from rest_framework.pagination import PageNumberPagination
-from rest_framework.views import APIView
-from rest_framework import status
+# from rest_framework.pagination import PageNumberPagination
+# from rest_framework.views import APIView
+# from rest_framework import status
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
 from django.db import IntegrityError
+
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
 
 class VendorList(generics.ListCreateAPIView):
     queryset = models.Vendor.objects.all()
@@ -155,9 +158,30 @@ class ProductRatingViewSet(viewsets.ModelViewSet):
     queryset = models.ProductRating.objects.all()
 
 # Main Category
+# class MainCategoryList(generics.ListAPIView):
+#     serializer_class = serializers.MainCategorySerializer
+#     queryset = models.MainCategory.objects.all()
 class MainCategoryList(generics.ListAPIView):
     serializer_class = serializers.MainCategorySerializer
     queryset = models.MainCategory.objects.all()
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        serializer = self.get_serializer(queryset, many=True)
+        data = serializer.data
+
+        # Add categories and subcategories to each main category
+        for main_category_data in data:
+            main_category = models.MainCategory.objects.get(id=main_category_data['id'])
+            categories = models.Category.objects.filter(main_category=main_category)
+            category_serializer = serializers.CategorySerializer(categories, many=True)
+            main_category_data['categories'] = category_serializer.data
+            for category_data in main_category_data['categories']:
+                category = models.Category.objects.get(id=category_data['id'])
+                subcategories = models.SubCategory.objects.filter(category=category)
+                subcategory_serializer = serializers.SubCategorySerializer(subcategories, many=True)
+                category_data['subcategories'] = subcategory_serializer.data
+        return Response(data)
 
 # Main Category Detail
 class MainCategoryDetail(generics.RetrieveAPIView):
@@ -173,13 +197,13 @@ class MainCategoryDetail(generics.RetrieveAPIView):
         return context
 
 # Category
-class CategoryList(generics.ListCreateAPIView):
-    queryset = models.Category.objects.all()
-    serializer_class = serializers.CategorySerializer
+# class CategoryList(generics.ListCreateAPIView):
+#     queryset = models.Category.objects.all()
+#     serializer_class = serializers.CategorySerializer
 
 # Category Detail
 class CategoryDetail(generics.RetrieveAPIView):
-    serializer_class = serializers.CategorySerializer
+    serializer_class = serializers.CategoryDetailSerializer
 
     def get_object(self):
         maincategory_slug = self.kwargs.get('maincategory_slug')
@@ -187,13 +211,13 @@ class CategoryDetail(generics.RetrieveAPIView):
         return get_object_or_404(models.Category, main_category__slug=maincategory_slug, slug=category_slug)
 
 # Sub Category
-class SubCategoryList(generics.ListCreateAPIView):
-    queryset = models.SubCategory.objects.all()
-    serializer_class = serializers.SubCategorySerializer
+# class SubCategoryList(generics.ListCreateAPIView):
+#     queryset = models.SubCategory.objects.all()
+#     serializer_class = serializers.SubCategorySerializer
 
 # Sub Category Detail
 class SubCategoryDetail(generics.RetrieveAPIView):
-    serializer_class = serializers.SubCategorySerializer
+    serializer_class = serializers.SubCategoryDetailSerializer
 
     def get_object(self):
         # maincategory_slug = self.kwargs.get('maincategory_slug')
@@ -249,21 +273,20 @@ class ProductsByBrand(generics.ListAPIView):
 #     else:
 #         return JsonResponse({'success': False, 'error': 'Invalid request method'})
 
-@csrf_exempt
-class AddToCartView(APIView):
-  def post(self, request):
-    user = request.user
-    product_id = request.data.get('product_id')
-    quantity = request.data.get('quantity')
+# @csrf_exempt
+# class AddToCartView(APIView):
+#   def post(self, request):
+#     user = request.user
+#     product_id = request.data.get('product_id')
+#     quantity = request.data.get('quantity')
 
-    if not user.is_authenticated:
-      return Response({'error': 'Authentication required.'}, status=status.HTTP_401_UNAUTHORIZED)
+#     if not user.is_authenticated:
+#       return Response({'error': 'Authentication required.'}, status=status.HTTP_401_UNAUTHORIZED)
 
-    product = get_object_or_404(models.Product, id=product_id)
-    cart, _ = models.Cart.objects.get_or_create(user=user)
-    cart_item, created = models.CartItem.objects.get_or_create(cart=cart, product=product)
-    cart_item.quantity += int(quantity)
-    cart_item.save()
+#     product = get_object_or_404(models.Product, id=product_id)
+#     cart, _ = models.Cart.objects.get_or_create(user=user)
+#     cart_item, created = models.CartItem.objects.get_or_create(cart=cart, product=product)
+#     cart_item.quantity += int(quantity)
+#     cart_item.save()
 
-    return Response({'message': 'Product added to cart.'}, status=status.HTTP_200_OK)
-
+#     return Response({'message': 'Product added to cart.'}, status=status.HTTP_200_OK)

@@ -57,6 +57,7 @@ class Brand(models.Model):
 
 # Product
 class Product(models.Model):
+    main_category = models.ForeignKey(MainCategory, on_delete=models.SET_NULL,null=True)
     category=models.ForeignKey(Category, on_delete=models.SET_NULL,null=True)
     subcategory=models.ForeignKey(SubCategory, on_delete=models.SET_NULL,null=True)
     brand = models.ForeignKey(Brand, on_delete=models.CASCADE)
@@ -66,6 +67,7 @@ class Product(models.Model):
     detail=models.TextField(null=True)
     price=models.FloatField()
     image=models.ImageField(upload_to='product_images/', null=True)
+    quantity = models.IntegerField(null=True)
 
     def __str__(self):
         return self.title

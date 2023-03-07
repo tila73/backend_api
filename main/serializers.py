@@ -43,7 +43,7 @@ class ProductDetailSerializer(serializers.ModelSerializer):
     class Meta:
         many=True
         model=models.Product
-        fields=['id', 'category', 'subcategory', 'main_category_name', 'brand', 'vendor', 'title', 'slug', 'detail', 'price', 'product_ratings', 'product_images']
+        fields=['id', 'category', 'subcategory', 'main_category_name', 'brand', 'vendor', 'title', 'slug', 'detail', 'price', 'product_ratings', 'image', 'product_images']
 
     def __init__(self, *args, **kwargs):
         super(ProductDetailSerializer, self).__init__(*args, **kwargs)
@@ -106,6 +106,12 @@ class ProductRatingSerializer(serializers.ModelSerializer):
 
 # Sub Category
 class SubCategorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.SubCategory
+        fields = ['id', 'name', 'image', 'slug']
+
+# Sub Category Detail
+class SubCategoryDetailSerializer(serializers.ModelSerializer):
     category_name = serializers.CharField(source='category.name')
     main_category_name = serializers.CharField(source='category.main_category.name')
     products = serializers.SerializerMethodField()
@@ -121,8 +127,16 @@ class SubCategorySerializer(serializers.ModelSerializer):
     #     super(SubCategorySerializer, self).__init__(*args, **kwargs)
     #     self.Meta.depth = 1
 
-# Category        
+# Category
 class CategorySerializer(serializers.ModelSerializer):
+    subcategories = SubCategorySerializer(many=True)
+
+    class Meta:
+        model = models.Category
+        fields = ['id', 'name', 'slug', 'subcategories']
+
+# Category Detail    
+class CategoryDetailSerializer(serializers.ModelSerializer):
     main_category_name = serializers.CharField(source='main_category.name')
     subcategories = serializers.SerializerMethodField()
     products = serializers.SerializerMethodField()
@@ -134,7 +148,7 @@ class CategorySerializer(serializers.ModelSerializer):
 
     def get_subcategories(self, instance):
         subcategories = instance.subcategories.all()
-        serializer = SubCategorySerializer(subcategories, many=True)
+        serializer = SubCategoryDetailSerializer(subcategories, many=True)
         return serializer.data
 
     def get_products(self, obj):
@@ -144,16 +158,25 @@ class CategorySerializer(serializers.ModelSerializer):
 
 # Main Category
 class MainCategorySerializer(serializers.ModelSerializer):
+    categories = CategorySerializer(many=True)
+
     class Meta:
         model = models.MainCategory
-        fields = ['id', 'name', 'image', 'slug']
+        fields = ['id', 'name', 'image', 'slug', 'categories']
 
     def __init__(self, *args, **kwargs):
         super(MainCategorySerializer, self).__init__(*args, **kwargs)
         self.Meta.depth = 1
+    # class Meta:
+    #     model = models.MainCategory
+    #     fields = ['id', 'name', 'image', 'slug']
 
+    # def __init__(self, *args, **kwargs):
+    #     super(MainCategorySerializer, self).__init__(*args, **kwargs)
+    #     self.Meta.depth = 1
+    
 class MainCategoryDetailSerializer(serializers.ModelSerializer):
-    categories = CategorySerializer(many=True, read_only=True)
+    categories = CategoryDetailSerializer(many=True, read_only=True)
 
     class Meta:
         model = models.MainCategory
