@@ -18,23 +18,34 @@ class VendorDetailSerializer(serializers.ModelSerializer):
     def __init__(self, *args, **kwargs):
         super(VendorDetailSerializer, self).__init__(*args, **kwargs)
         self.Meta.depth = 1
+class ProductImageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.ProductImage
+        fields = ['id', 'product', 'image']
+class ProductCreateSerializer(serializers.ModelSerializer):
+    product_images = ProductImageSerializer(many=True, required=False)
 
+    class Meta:
+        model = models.Product
+        fields=['id', 'main_category', 'category', 'subcategory', 'brand', 'vendor', 'title', 'slug', 'detail', 'price', 'image', 'quantity', 'product_images']
+
+    def create(self, validated_data):
+        product_images_data = validated_data.pop('product_images', [])
+        product = models.Product.objects.create(**validated_data)
+        for image_data in product_images_data:
+            models.ProductImage.objects.create(product=product, **image_data)
+        return product
+    
 class ProductListSerializer(serializers.ModelSerializer):
     product_ratings=serializers.StringRelatedField(many=True, read_only=True)
     brand_name = serializers.CharField(source='brand.name')
     class Meta:
         model=models.Product
-        fields=['id', 'category', 'subcategory', 'brand', 'brand_name', 'vendor', 'title', 'slug', 'detail', 'price', 'product_ratings', 'image']
+        fields=['id', 'main_category', 'category', 'subcategory', 'brand', 'brand_name', 'vendor', 'title', 'slug', 'detail', 'price', 'product_ratings', 'image', 'quantity']
 
     def __init__(self, *args, **kwargs):
         super(ProductListSerializer, self).__init__(*args, **kwargs)
         self.Meta.depth = 1
-
-class ProductImageSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = models.ProductImage
-        fields = ['id', 'product', 'image']
-
 class ProductDetailSerializer(serializers.ModelSerializer):
     product_ratings=serializers.StringRelatedField(many=True, read_only=True)
     product_images = ProductImageSerializer(many=True, read_only=True)
@@ -43,7 +54,7 @@ class ProductDetailSerializer(serializers.ModelSerializer):
     class Meta:
         many=True
         model=models.Product
-        fields=['id', 'category', 'subcategory', 'main_category_name', 'brand', 'vendor', 'title', 'slug', 'detail', 'price', 'product_ratings', 'image', 'product_images']
+        fields=['id', 'category', 'subcategory', 'main_category_name', 'brand', 'vendor', 'title', 'slug', 'detail', 'price', 'quantity', 'product_ratings', 'image', 'product_images']
 
     def __init__(self, *args, **kwargs):
         super(ProductDetailSerializer, self).__init__(*args, **kwargs)
@@ -73,9 +84,9 @@ class OrderSerializer(serializers.ModelSerializer):
         model=models.Order
         fields=['id', 'customer']
 
-    def __init__(self, *args, **kwargs):
-        super(OrderSerializer, self).__init__(*args, **kwargs)
-        self.Meta.depth = 1
+    # def __init__(self, *args, **kwargs):
+    #     super(OrderSerializer, self).__init__(*args, **kwargs)
+    #     self.Meta.depth = 1
 
 class OrderDetailSerializer(serializers.ModelSerializer):
     class Meta:

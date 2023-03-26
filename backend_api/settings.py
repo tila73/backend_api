@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'corsheaders',
+    'ckeditor',
     'main',
 ]
 
@@ -140,7 +141,8 @@ REST_FRAMEWORK = {
     # ),
     # 'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'DEFAULT_PAGINATION_CLASS': 'main.pagination.CustomPagination',
-    'PAGE_SIZE':10
+    # 'PAGE_SIZE':10
+    'PAGE_SIZE':100
 }
 
 MEDIA_URL = '/media/'

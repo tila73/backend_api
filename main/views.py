@@ -6,7 +6,7 @@ from django.shortcuts import get_object_or_404
 from rest_framework.response import Response
 # from rest_framework.pagination import PageNumberPagination
 # from rest_framework.views import APIView
-# from rest_framework import status
+from rest_framework import status
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth import authenticate
@@ -15,6 +15,8 @@ from django.db import IntegrityError
 
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
+from django.db.models import Q
+from django.contrib.auth.hashers import make_password
 
 class VendorList(generics.ListCreateAPIView):
     queryset = models.Vendor.objects.all()
@@ -24,23 +26,63 @@ class VendorDetail(generics.RetrieveUpdateDestroyAPIView):
     queryset = models.Vendor.objects.all()
     serializer_class = serializers.VendorDetailSerializer
 
+@csrf_exempt
+def seller_login(request):
+    username=request.POST.get('username')
+    password=request.POST.get('password')
+    user=authenticate(username=username,password=password)
+    
+    if user:
+        vendor=models.Vendor.objects.get(user=user)
+        msg={
+            'bool':True,
+            'user':user.username,
+            'id':vendor.id,
+        }
+    else:
+        msg={
+            'bool':False,
+            'msg':'Invalid username or password!'
+        }
+    return  JsonResponse(msg)
+
+# class ProductCreate(generics.ListCreateAPIView):
+#     queryset = models.Product.objects.all()
+#     serializer_class = serializers.ProductCreateSerializer
+
+class ProductCreate(generics.ListCreateAPIView):
+    queryset = models.Product.objects.all()
+    serializer_class = serializers.ProductCreateSerializer
+
+    def post(self, request, *args, **kwargs):
+        product_serializer = self.get_serializer(data=request.data)
+        if product_serializer.is_valid():
+            product = product_serializer.save()
+
+            # Loop through each uploaded file and save it to the database
+            for file in request.FILES.getlist('product_images'):
+                product_image = models.ProductImage.objects.create(
+                    product=product,
+                    image=file,
+                )
+
+            headers = self.get_success_headers(product_serializer.data)
+            return Response(product_serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+        return Response(product_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 class ProductList(generics.ListCreateAPIView):
     queryset = models.Product.objects.all()
     serializer_class = serializers.ProductListSerializer
     # view level pagination
     # pagination_class = pagination.PageNumberPagination
     
-    # def get_queryset(self):
-    #     brand_name = self.kwargs.get('brand_name', None)
-    #     if brand_name is not None:
-    #         queryset = models.Product.objects.filter(brand__name=brand_name)
-    #     else:
-    #         queryset = models.Product.objects.all()
-    #     return queryset
-
-# class ProductDetail(generics.RetrieveUpdateDestroyAPIView):
-#     queryset = models.Product.objects.all()
-#     serializer_class = serializers.ProductDetailSerializer
+    def get_queryset(self):
+        if 'searchString' in self.kwargs:
+            search=self.kwargs['searchString']
+            qs=models.Product.objects.filter(Q(title__icontains=search))
+            return qs
+        else:
+            return self.queryset
 
 class ProductDetail(generics.RetrieveAPIView):
     queryset = models.Product.objects.all()
@@ -76,9 +118,11 @@ def customer_login(request):
     password=request.POST.get('password')
     user=authenticate(username=username,password=password)
     if user:
+        customer=models.Customer.objects.get(user=user)
         msg={
             'bool':True,
-            'user':user.username
+            'user':user.username,
+            'id':customer.id,
         }
     else:
         msg={
@@ -95,6 +139,7 @@ def customer_register(request):
     mobile=request.POST.get('mobile')
     username=request.POST.get('username')
     password=request.POST.get('password')
+    hashed_password = make_password(password)
     
     try:
         user = User.objects.create(
@@ -102,7 +147,7 @@ def customer_register(request):
             last_name=last_name,
             email=email,
             username=username,
-            password=password,
+            password=hashed_password,
         )
         if user:
             try:
@@ -138,6 +183,10 @@ def customer_register(request):
 class OrderList(generics.ListCreateAPIView):
     queryset = models.Order.objects.all()
     serializer_class = serializers.OrderSerializer
+
+    def post(self, request, *args, **kwargs):
+        print(request.POST)
+        return super().post(request, *args, **kwargs)
 
 class OrderDetail(generics.ListAPIView):
     #queryset = models.OrderItems.objects.all()

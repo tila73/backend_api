@@ -1,21 +1,26 @@
 from django.db import models
 from django.contrib.auth.models import User
+import markdown
+import bleach
+from ckeditor.fields import RichTextField
 
 # Vendor Model
 class Vendor(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True)
     address = models.TextField(null=True)
 
     def __str__(self):
         return self.user.username
-
-# Product Category
-# class ProductCategory(models.Model):
-#     title=models.CharField(max_length=200)
-#     detail=models.TextField(null=True)
+    
+# class Vendor(models.Model):
+#     full_name=models.CharField(max_length=150, null=True)
+#     email=models.CharField(max_length=150, null=True)
+#     address=models.CharField(max_length=200, null=True)
+#     mobile=models.CharField(max_length=20, null=True)
+#     password=models.CharField(max_length=100, null=True)
 
 #     def __str__(self):
-#         return self.title
+#         return self.full_name
 
 # Main Category
 class MainCategory(models.Model):
@@ -64,7 +69,7 @@ class Product(models.Model):
     vendor=models.ForeignKey(Vendor, on_delete=models.SET_NULL, null=True)
     title=models.CharField(max_length=250)
     slug=models.CharField(max_length=250, unique=True, null=True)
-    detail=models.TextField(null=True)
+    detail=RichTextField(null=True)
     price=models.FloatField()
     image=models.ImageField(upload_to='product_images/', null=True)
     quantity = models.IntegerField(null=True)
