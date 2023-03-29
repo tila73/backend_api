@@ -46,9 +46,43 @@ def seller_login(request):
         }
     return  JsonResponse(msg)
 
-# class ProductCreate(generics.ListCreateAPIView):
-#     queryset = models.Product.objects.all()
-#     serializer_class = serializers.ProductCreateSerializer
+class VendorProductList(generics.ListAPIView):
+    serializer_class=serializers.ProductCreateSerializer
+    
+    def get_queryset(self):
+        vendor_id=self.kwargs['vendor_id']
+        vendor=models.Vendor.objects.get(pk=vendor_id)
+        return models.Product.objects.filter(vendor=vendor)
+    
+class VendorProductDetail(generics.RetrieveUpdateDestroyAPIView):
+    queryset = models.Product.objects.all()
+    serializer_class=serializers.ProductCreateSerializer
+    
+    def put(self, request, *args, **kwargs):
+        instance = self.get_object()
+        product_serializer = self.get_serializer(instance=instance, data=request.data)
+        if product_serializer.is_valid():
+            product = product_serializer.save()
+
+            # Delete all existing ProductImage objects for the product
+            product.product_images.all().delete()
+
+            # Update each uploaded file and save it to the database
+            for file in request.FILES.getlist('product_images'):
+                product_image = models.ProductImage.objects.create(
+                    product=product,
+                    image=file,
+                )
+
+            headers = self.get_success_headers(product_serializer.data)
+            return Response(product_serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+        return Response(product_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def get_success_headers(self, data):
+        try:
+            return {'Location': data['url']}
+        except (TypeError, KeyError):
+            return {}
 
 class ProductCreate(generics.ListCreateAPIView):
     queryset = models.Product.objects.all()
@@ -84,7 +118,7 @@ class ProductList(generics.ListCreateAPIView):
         else:
             return self.queryset
 
-class ProductDetail(generics.RetrieveAPIView):
+class ProductDetail(generics.RetrieveUpdateDestroyAPIView):
     queryset = models.Product.objects.all()
     serializer_class = serializers.ProductDetailSerializer
 

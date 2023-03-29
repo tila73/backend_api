@@ -1,7 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import User
-import markdown
-import bleach
+# import markdown
+# import bleach
 from ckeditor.fields import RichTextField
 
 # Vendor Model
