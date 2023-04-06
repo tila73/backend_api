@@ -18,10 +18,12 @@ class VendorDetailSerializer(serializers.ModelSerializer):
     def __init__(self, *args, **kwargs):
         super(VendorDetailSerializer, self).__init__(*args, **kwargs)
         self.Meta.depth = 1
+
 class ProductImageSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.ProductImage
         fields = ['id', 'product', 'image']
+
 class ProductCreateSerializer(serializers.ModelSerializer):
     product_images = ProductImageSerializer(many=True, required=False)
 
@@ -46,6 +48,7 @@ class ProductListSerializer(serializers.ModelSerializer):
     def __init__(self, *args, **kwargs):
         super(ProductListSerializer, self).__init__(*args, **kwargs)
         self.Meta.depth = 1
+        
 class ProductDetailSerializer(serializers.ModelSerializer):
     product_ratings=serializers.StringRelatedField(many=True, read_only=True)
     product_images = ProductImageSerializer(many=True, read_only=True)
@@ -100,11 +103,11 @@ class OrderDetailSerializer(serializers.ModelSerializer):
 class CustomerAddressSerializer(serializers.ModelSerializer):
     class Meta:
         model=models.CustomerAddress
-        fields=['id', 'customer', 'address', 'default_address']
+        fields=['id', 'customer', 'street_address', 'city', 'province', 'zip', 'default_address']
 
-    def __init__(self, *args, **kwargs):
-        super(CustomerAddressSerializer, self).__init__(*args, **kwargs)
-        self.Meta.depth = 1
+    # def __init__(self, *args, **kwargs):
+    #     super(CustomerAddressSerializer, self).__init__(*args, **kwargs)
+    #     self.Meta.depth = 1
 
 class ProductRatingSerializer(serializers.ModelSerializer):
     class Meta:
@@ -178,14 +181,6 @@ class MainCategorySerializer(serializers.ModelSerializer):
     def __init__(self, *args, **kwargs):
         super(MainCategorySerializer, self).__init__(*args, **kwargs)
         self.Meta.depth = 1
-    # class Meta:
-    #     model = models.MainCategory
-    #     fields = ['id', 'name', 'image', 'slug']
-
-    # def __init__(self, *args, **kwargs):
-    #     super(MainCategorySerializer, self).__init__(*args, **kwargs)
-    #     self.Meta.depth = 1
-    
 class MainCategoryDetailSerializer(serializers.ModelSerializer):
     categories = CategoryDetailSerializer(many=True, read_only=True)
 
@@ -211,3 +206,34 @@ class BrandDetailSerializer(serializers.ModelSerializer):
     def __init__(self, *args, **kwargs):
         super(BrandDetailSerializer, self).__init__(*args, **kwargs)
         self.Meta.depth = 1
+
+class VendorDashboardSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.Vendor
+        fields = ["total_vendor_products"]
+
+class CustomerDashboardSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.Customer
+        fields = ["total_customer_addresses"]
+
+class CartItemSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.CartItem
+        fields = ['product', 'quantity']
+
+class CartSerializer(serializers.ModelSerializer):
+    items = CartItemSerializer(many=True)
+    
+    class Meta:
+        model = models.Cart
+        fields = ['items']
+
+    def create(self, validated_data):
+        cart_customer = validated_data.pop('customer')
+        items_data = validated_data.pop('items')
+        cart = models.Cart.objects.create(customer=cart_customer, **validated_data)
+        for item_data in items_data:
+            models.CartItem.objects.create(cart=cart, **item_data)
+        return cart
+    

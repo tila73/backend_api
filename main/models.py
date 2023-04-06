@@ -8,9 +8,15 @@ from ckeditor.fields import RichTextField
 class Vendor(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True)
     address = models.TextField(null=True)
+    mobile = models.PositiveBigIntegerField(unique=True, null=True)
 
     def __str__(self):
         return self.user.username
+    
+    # Total Vendor Products
+    def total_vendor_products(self):
+        total_products = Product.objects.filter(vendor=self).count()
+        return total_products
     
 # class Vendor(models.Model):
 #     full_name=models.CharField(max_length=150, null=True)
@@ -89,9 +95,15 @@ class ProductImage(models.Model):
 class Customer(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     mobile = models.PositiveBigIntegerField(unique=True)
+    cart = models.ForeignKey('Cart', on_delete=models.SET_NULL, null=True, blank=True)
 
     def __str__(self):
         return self.user.username
+    
+    # Total Customer Products
+    def total_customer_addresses(self):
+        total_addresses = CustomerAddress.objects.filter(customer=self).count()
+        return total_addresses
 
 # Order Model
 class Order(models.Model):
@@ -112,11 +124,14 @@ class OrderItem(models.Model):
 # Customer Address Model
 class CustomerAddress(models.Model):
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='customer_addresses')
-    address = models.TextField()
+    street_address = models.CharField(max_length=100, null=True)
+    city = models.CharField(max_length=50, null=True)
+    province = models.CharField(max_length=50, null=True)
+    zip = models.CharField(max_length=10, null=True)
     default_address = models.BooleanField(default=False)
 
     def __str__(self):
-        return self.address 
+        return self.street_address 
 
 # Product Ratings and Reviews
 class ProductRating(models.Model):
@@ -131,7 +146,7 @@ class ProductRating(models.Model):
 
 # Cart
 class Cart(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    cart_customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='carts', null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def total_price(self):
@@ -139,7 +154,7 @@ class Cart(models.Model):
 
 # Cart item
 class CartItem(models.Model):
-    cart = models.ForeignKey(Cart, on_delete=models.CASCADE)
+    cart = models.ForeignKey(Cart, on_delete=models.CASCADE, related_name='items')
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     quantity = models.PositiveIntegerField()
 
@@ -157,4 +172,5 @@ class Payment(models.Model):
 
     def __str__(self):
         return f"Payment by {self.user} for order {self.order} of amount {self.amount}"
+    
 

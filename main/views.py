@@ -2,6 +2,7 @@
 from rest_framework import generics, permissions,pagination,viewsets
 from . import serializers
 from . import models
+from .pagination import CustomPagination
 from django.shortcuts import get_object_or_404
 from rest_framework.response import Response
 # from rest_framework.pagination import PageNumberPagination
@@ -12,11 +13,12 @@ from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
 from django.db import IntegrityError
-
-from rest_framework.decorators import api_view
+from rest_framework.views import APIView
+from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from django.db.models import Q
 from django.contrib.auth.hashers import make_password
+from rest_framework.permissions import IsAuthenticated
 
 class VendorList(generics.ListCreateAPIView):
     queryset = models.Vendor.objects.all()
@@ -43,6 +45,56 @@ def seller_login(request):
         msg={
             'bool':False,
             'msg':'Invalid username or password!'
+        }
+    return  JsonResponse(msg)
+
+@csrf_exempt
+def seller_register(request):
+    first_name=request.POST.get('first_name')
+    last_name=request.POST.get('last_name')
+    email=request.POST.get('email')
+    address=request.POST.get('address')
+    mobile=request.POST.get('mobile')
+    username=request.POST.get('username')
+    password=request.POST.get('password')
+    hashed_password = make_password(password)
+    
+    try:
+        user = User.objects.create(
+            first_name=first_name,
+            last_name=last_name,
+            email=email,
+            username=username,
+            password=hashed_password,
+        )
+        if user:
+            try:
+                # Create vendor
+                vendor=models.Vendor.objects.create(
+                    user=user,
+                    address=address,
+                    mobile=mobile
+                )
+                msg={
+                    'bool':True,
+                    'user':user.username,
+                    'seller':vendor.id,
+                    'msg':'Thank you for your registration. You can login now.'
+                }
+            except IntegrityError:
+                msg={
+                    'bool':False,
+                    'msg':'A user with that mobile number already exists.'
+                }
+        else:
+            msg={
+                'bool':False,
+                'msg':'Oops...! Something went wrong.'
+            }
+    except IntegrityError:
+        msg={
+            'bool':False,
+            'msg':'Username already exists.'
         }
     return  JsonResponse(msg)
 
@@ -107,6 +159,7 @@ class ProductCreate(generics.ListCreateAPIView):
 class ProductList(generics.ListCreateAPIView):
     queryset = models.Product.objects.all()
     serializer_class = serializers.ProductListSerializer
+    pagination_class = CustomPagination
     # view level pagination
     # pagination_class = pagination.PageNumberPagination
     
@@ -145,6 +198,63 @@ class CustomerList(generics.ListCreateAPIView):
 class CustomerDetail(generics.RetrieveUpdateDestroyAPIView):
     queryset = models.Customer.objects.all()
     serializer_class = serializers.CustomerDetailSerializer
+
+class AddressList(generics.ListCreateAPIView):
+    queryset = models.CustomerAddress.objects.all()
+    serializer_class = serializers.CustomerAddressSerializer
+
+    def perform_create(self, serializer):
+        # Get the customer ID from the request data
+        customer_id = self.request.data.get("customer")
+
+        # Set the new address as the default if no default address exists
+        if models.CustomerAddress.objects.filter(customer_id=customer_id, default_address=True).count() == 0:
+            serializer.validated_data['default_address'] = True
+
+        # Set the new address as the default and unset any existing default address
+        elif serializer.validated_data.get('default_address', False):
+            current_default = models.CustomerAddress.objects.get(customer_id=customer_id,  default_address=True)
+            current_default.default_address = False
+            current_default.save()
+            serializer.validated_data['default_address'] = True
+
+        # Create the new address
+        serializer.save(customer_id=customer_id)
+
+class CustomerAddressList(generics.ListAPIView):
+    serializer_class=serializers.CustomerAddressSerializer
+    
+    def get_queryset(self):
+        customer_id=self.kwargs['customer_id']
+        customer=models.Customer.objects.get(pk=customer_id)
+        return models.CustomerAddress.objects.filter(customer=customer)
+    
+class CustomerAddressDetail(generics.RetrieveUpdateDestroyAPIView):
+    queryset = models.CustomerAddress.objects.all()
+    serializer_class=serializers.CustomerAddressSerializer
+
+    def perform_update(self, serializer):
+        # Get the customer ID from the request data
+        customer_id = serializer.validated_data.get("customer")
+
+        # Set the new address as the default if no default address exists
+        if models.CustomerAddress.objects.filter(customer_id=customer_id, default_address=True).exclude(id=serializer.instance.id).count() == 0:
+            serializer.validated_data['default_address'] = True
+
+        # Set the new address as the default and unset any existing default address
+        elif serializer.validated_data.get('default_address', False):
+            current_default = models.CustomerAddress.objects.get(customer_id=customer_id, default_address=True)
+            current_default.default_address = False
+            current_default.save()
+            serializer.validated_data['default_address'] = True
+
+            # Update the previous default address to be non-default
+            previous_default = serializer.instance
+            previous_default.default_address = False
+            previous_default.save()
+
+        # Update the address
+        serializer.save()
 
 @csrf_exempt
 def customer_login(request):
@@ -231,10 +341,6 @@ class OrderDetail(generics.ListAPIView):
         order=models.Order.objects.get(id=order_id)
         order_items=models.OrderItem.objects.filter(order=order)
         return order_items
-    
-class CustomerAddressViewSet(viewsets.ModelViewSet):
-    serializer_class = serializers.CustomerAddressSerializer
-    queryset = models.CustomerAddress.objects.all()
 
 class ProductRatingViewSet(viewsets.ModelViewSet):
     serializer_class = serializers.ProductRatingSerializer
@@ -336,40 +442,29 @@ class ProductsByBrand(generics.ListAPIView):
         brand_slug = self.kwargs['brand_slug']
         return models.Product.objects.filter(brand__slug=brand_slug)
     
-# Add to cart
-# @csrf_exempt
-# def add_to_cart(request):
-#     if request.method == 'POST':
-#         # Retrieve the product ID and quantity from the request body
-#         product_id = request.POST.get('product_id')
-#         quantity = int(request.POST.get('quantity'))
-        
-#         # Get the product from the database
-#         product = models.Product.objects.get(id=product_id)
-        
-#         # Add the product to the user's cart or update the quantity if it already exists
-#         cart, created = models.Cart.objects.get_or_create(user=request.user)
-#         cart_item, created = models.CartItem.objects.get_or_create(cart=cart, product=product)
-#         cart_item.quantity += quantity
-#         cart_item.save()
-#         return JsonResponse({'success': True})
-#     else:
-#         return JsonResponse({'success': False, 'error': 'Invalid request method'})
+class VendorDashboard(generics.RetrieveAPIView):
+    queryset=models.Vendor.objects.all()
+    serializer_class=serializers.VendorDashboardSerializer
 
-# @csrf_exempt
-# class AddToCartView(APIView):
-#   def post(self, request):
-#     user = request.user
-#     product_id = request.data.get('product_id')
-#     quantity = request.data.get('quantity')
-
-#     if not user.is_authenticated:
-#       return Response({'error': 'Authentication required.'}, status=status.HTTP_401_UNAUTHORIZED)
-
-#     product = get_object_or_404(models.Product, id=product_id)
-#     cart, _ = models.Cart.objects.get_or_create(user=user)
-#     cart_item, created = models.CartItem.objects.get_or_create(cart=cart, product=product)
-#     cart_item.quantity += int(quantity)
-#     cart_item.save()
-
-#     return Response({'message': 'Product added to cart.'}, status=status.HTTP_200_OK)
+class CustomerDashboard(generics.RetrieveAPIView):
+    queryset=models.Customer.objects.all()
+    serializer_class=serializers.CustomerDashboardSerializer
+    
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def save_cart(request):
+    cart_customer = request.user.customer
+    cart = cart_customer.cart
+    if cart is None:
+        cart = models.Cart.objects.create(customer=cart_customer)
+    serializer = models.CartSerializer(data=request.data)
+    if serializer.is_valid():
+        for item in serializer.validated_data['items']:
+            product = models.Product.objects.get(id=item['product_id'])
+            cart_item = models.CartItem.objects.create(
+                cart=cart,
+                product=product,
+                quantity=item['quantity']
+            )
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

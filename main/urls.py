@@ -3,22 +3,28 @@ from . import views
 from rest_framework import routers
 
 router = routers.DefaultRouter()
-router.register('address', views.CustomerAddressViewSet)
+# router.register('address', views.CustomerAddressViewSet)
 router.register('productrating', views.ProductRatingViewSet)
 
 urlpatterns = [
     # Vendors
     path('vendors/', views.VendorList.as_view()),
+    path('vendor/dashboard/<int:pk>/', views.VendorDashboard.as_view()),
     path('vendor/<int:pk>/', views.VendorDetail.as_view()),
     path('seller/login/', views.seller_login, name='seller_login'),
+    path('seller/register/', views.seller_register, name='seller_register'),
     path('vendor-products/<int:vendor_id>', views.VendorProductList.as_view()),
     path('vendor-product-detail/<int:pk>', views.VendorProductDetail.as_view()),
 
     #Customers
+    path('customer-address/<int:pk>/detail/', views.CustomerAddressDetail.as_view()),
     path('customers/', views.CustomerList.as_view()),
+    path('customer/dashboard/<int:pk>/', views.CustomerDashboard.as_view()),
     path('customer/<int:pk>/', views.CustomerDetail.as_view()),
     path('customer/login/', views.customer_login, name='customer_login'),
     path('customer/register/', views.customer_register, name='customer_register'),
+    path('customer/address/', views.AddressList.as_view()),
+    path('customer-address/<int:customer_id>/', views.CustomerAddressList.as_view()),
 
     # Products
     path('products/', views.ProductList.as_view()),
@@ -41,7 +47,9 @@ urlpatterns = [
     path('<slug:maincategory_slug>/<slug:category_slug>/', views.CategoryDetail.as_view(), name='category-detail'),
     path('<slug:maincategory_slug>/<slug:category_slug>/<slug:subcategory_slug>/', views.SubCategoryDetail.as_view(), name='subcategory-detail'),
     #path('sub_categories/', views.SubCategoryList.as_view()), yo le ni tei main category ko slug linxa
-    
+
+    path('save_cart/', views.save_cart, name='save_cart'),
+
     #Orders
     path('orders/', views.OrderList.as_view()),
     path('order/<int:pk>/', views.OrderDetail.as_view()),

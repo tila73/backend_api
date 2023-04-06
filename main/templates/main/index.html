@@ -1,0 +1,47 @@
+{% comment %} <!DOCTYPE html>
+<html>
+  <head>
+    <title>Welcome to My Site</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background-color: #f5f5f5;
+        padding: 20px;
+      }
+      
+      h1 {
+        font-size: 36px;
+        text-align: center;
+        margin-bottom: 20px;
+      }
+      
+      p {
+        font-size: 18px;
+        text-align: center;
+        margin-bottom: 20px;
+      }
+      
+      .btn {
+        display: block;
+        width: 200px;
+        margin: 0 auto;
+        padding: 10px;
+        background-color: #007bff;
+        color: #fff;
+        text-align: center;
+        border-radius: 5px;
+        text-decoration: none;
+      }
+      
+      .btn:hover {
+        background-color: #0062cc;
+        color: #fff;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Welcome, Admin!</h1>
+    <p>Please click the button below to go to the admin panel:</p>
+    <a href="{% url 'admin:index' %}" class="btn">Go to Admin Panel</a>
+  </body>
+</html> {% endcomment %}

@@ -1,7 +1,11 @@
 from django.contrib import admin
 from . import models
 
-admin.site.register(models.Vendor)
+class VendorAdmin(admin.ModelAdmin):
+    list_display=['username', 'address', 'mobile']
+    def username(self, obj):
+        return obj.user.username
+admin.site.register(models.Vendor, VendorAdmin)
 admin.site.register(models.MainCategory)
 admin.site.register(models.Category)
 admin.site.register(models.SubCategory)
