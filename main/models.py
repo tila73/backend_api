@@ -3,6 +3,7 @@ from django.contrib.auth.models import User
 # import markdown
 # import bleach
 from ckeditor.fields import RichTextField
+from django.core.mail import send_mail
 
 # Vendor Model
 class Vendor(models.Model):
@@ -173,4 +174,29 @@ class Payment(models.Model):
     def __str__(self):
         return f"Payment by {self.user} for order {self.order} of amount {self.amount}"
     
+class Contact(models.Model):
+    full_name=models.CharField(max_length=100)
+    email=models.EmailField()
+    message=models.TextField()
+    add_time=models.DateTimeField(auto_now_add=True)
 
+    def __str__(self) -> str:
+        return self.message
+
+    def save(self, *args, **kwargs):
+        send_mail(
+            "Contact Message",
+            "Here is the message.",
+            "tila.ale00@gmail.com",
+            [self.email],
+            fail_silently=False,
+            html_message=f'<p>{self.full_name}</p><p>{self.message}</p>'
+        )   
+        return super(Contact,self).save(*args, **kwargs)
+
+class FAQ(models.Model):
+    question = models.CharField(max_length=100)
+    answer = models.TextField()
+
+    def __str__(self) -> str:
+        return self.question

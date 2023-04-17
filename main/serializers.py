@@ -237,3 +237,12 @@ class CartSerializer(serializers.ModelSerializer):
             models.CartItem.objects.create(cart=cart, **item_data)
         return cart
     
+class ContactSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.Contact
+        fields = ['id', 'full_name', 'email', 'message']
+class FaqSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.FAQ
+        fields = ['id', 'question', 'answer']
+    

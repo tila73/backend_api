@@ -25,6 +25,8 @@ admin.site.register(models.ProductRating)
 admin.site.register(models.ProductImage)
 admin.site.register(models.Cart)
 admin.site.register(models.CartItem)
+admin.site.register(models.Contact)
+admin.site.register(models.FAQ)
 
 class ProductImagesInline(admin.StackedInline):
     model = models.ProductImage

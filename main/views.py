@@ -1,5 +1,5 @@
 #from django.shortcuts import render
-from rest_framework import generics, permissions,pagination,viewsets
+from rest_framework import generics, permissions,pagination,viewsets, status
 from . import serializers
 from . import models
 from .pagination import CustomPagination
@@ -7,8 +7,8 @@ from django.shortcuts import get_object_or_404
 from rest_framework.response import Response
 # from rest_framework.pagination import PageNumberPagination
 # from rest_framework.views import APIView
-from rest_framework import status
 from django.http import JsonResponse
+from django.http import HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
@@ -19,6 +19,10 @@ from rest_framework.response import Response
 from django.db.models import Q
 from django.contrib.auth.hashers import make_password
 from rest_framework.permissions import IsAuthenticated
+import requests
+from django.core.mail import send_mail
+from django.conf import settings
+import json
 
 class VendorList(generics.ListCreateAPIView):
     queryset = models.Vendor.objects.all()
@@ -449,22 +453,135 @@ class VendorDashboard(generics.RetrieveAPIView):
 class CustomerDashboard(generics.RetrieveAPIView):
     queryset=models.Customer.objects.all()
     serializer_class=serializers.CustomerDashboardSerializer
+
+@csrf_exempt
+def verify_payment(request):
+    url = 'https://khalti.com/api/v2/payment/verify/'
+    print(request.POST.get('token'))
+    print(request.POST.get('amount'))
+    print(request.POST)
+    payload = {
+        'token': request.POST.get('token'),
+        'amount': request.POST.get('amount'),
+    }
+    headers = {
+        'Authorization': 'Key test_secret_key_ec3ae7370edd43a7a95d0b8e1e02e96a',
+    }
+    response = requests.post(url, headers=headers, data=payload)
+    if response.status_code == 200:
+        # payment verified successfully
+        return HttpResponse('Payment verified')
+    else:
+        # payment verification failed
+        return HttpResponse('Payment verification failed')
     
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
-def save_cart(request):
-    cart_customer = request.user.customer
-    cart = cart_customer.cart
-    if cart is None:
-        cart = models.Cart.objects.create(customer=cart_customer)
-    serializer = models.CartSerializer(data=request.data)
-    if serializer.is_valid():
-        for item in serializer.validated_data['items']:
-            product = models.Product.objects.get(id=item['product_id'])
-            cart_item = models.CartItem.objects.create(
-                cart=cart,
-                product=product,
-                quantity=item['quantity']
-            )
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+@csrf_exempt
+def add_to_cart(request):
+    if request.method == 'POST':
+        product_id = request.POST.get('product_id')
+        quantity = request.POST.get('quantity')
+        customer_id = request.POST.get('customer_id')
+        
+        customer = get_object_or_404(models.Customer, pk=customer_id)
+        product = get_object_or_404(models.Product, pk=product_id)
+        
+        # Check if the cart exists for this customer
+        try:
+            cart = models.Cart.objects.get(cart_customer=customer)
+        except models.Cart.DoesNotExist:
+            cart = models.Cart.objects.create(cart_customer=customer)
+        
+        # Check if the item already exists in the cart
+        try:
+            item = cart.items.get(product=product)
+            item.quantity += int(quantity)
+            item.save()
+        except models.CartItem.DoesNotExist:
+            item = cart.items.create(product=product, quantity=quantity)
+        
+        return HttpResponse('Item added to cart')
+    
+@csrf_exempt
+def increase_quantity(request):
+    if request.method == 'POST':
+        product_id = request.POST.get('product_id')
+        customer_id = request.POST.get('customer_id')
+        
+        customer = get_object_or_404(models.Customer, pk=customer_id)
+        product = get_object_or_404(models.Product, pk=product_id)
+        
+        cart = models.Cart.objects.get(cart_customer=customer)
+        item = cart.items.get(product=product)
+        
+        item.quantity += 1
+        item.save()
+        
+        return HttpResponse('Item quantity increased') 
+
+# views.py
+@csrf_exempt
+def decrease_quantity(request):
+    if request.method == 'POST':
+        product_id = request.POST.get('product_id')
+        customer_id = request.POST.get('customer_id')
+        
+        customer = get_object_or_404(models.Customer, pk=customer_id)
+        product = get_object_or_404(models.Product, pk=product_id)
+        
+        cart = models.Cart.objects.get(cart_customer=customer)
+        item = cart.items.get(product=product)
+        
+        if item.quantity > 1:
+            item.quantity -= 1
+            item.save()
+            
+        return HttpResponse('Item quantity decreased')
+
+@csrf_exempt
+def remove_item(request):
+    if request.method == 'POST':
+        product_id = request.POST.get('product_id')
+        customer_id = request.POST.get('customer_id')
+
+        customer = get_object_or_404(models.Customer, pk=customer_id)
+        product = get_object_or_404(models.Product, pk=product_id)
+
+        cart = models.Cart.objects.get(cart_customer=customer)
+        item = cart.items.get(product=product)
+        
+        item.delete()
+        return HttpResponse('Item removed successfully')
+    
+@csrf_exempt
+def clear_cart(request):
+    if request.method == 'POST':
+        customer_id = request.POST.get('customer_id')
+        
+        customer = get_object_or_404(models.Customer, pk=customer_id)
+        cart = models.Cart.objects.get(cart_customer=customer)
+        cart.items.all().delete()
+
+        return HttpResponse('Cart cleared successfully')
+
+class ContactList(generics.ListCreateAPIView):
+    queryset=models.Contact.objects.all()
+    serializer_class=serializers.ContactSerializer
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        # send email
+        send_mail(
+            'New Contact Message',
+            'A new contact message has been received. Please check the admin panel for more information.',
+            settings.DEFAULT_FROM_EMAIL,
+            [settings.CONTACT_EMAIL],
+            fail_silently=False,
+        )
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+    
+class FaqList(generics.ListCreateAPIView):
+    queryset=models.FAQ.objects.all()
+    serializer_class=serializers.FaqSerializer

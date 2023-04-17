@@ -48,11 +48,20 @@ urlpatterns = [
     path('<slug:maincategory_slug>/<slug:category_slug>/<slug:subcategory_slug>/', views.SubCategoryDetail.as_view(), name='subcategory-detail'),
     #path('sub_categories/', views.SubCategoryList.as_view()), yo le ni tei main category ko slug linxa
 
-    path('save_cart/', views.save_cart, name='save_cart'),
+    # path('save_cart/', views.save_cart, name='save_cart'),
 
-    #Orders
+    # Cart
+    path('add_to_cart/', views.add_to_cart, name='add_to_cart'),
+    path('increase_quantity/', views.increase_quantity, name='increase_quantity'),
+    path('decrease_quantity/', views.decrease_quantity, name='decrease_quantity'),
+    path('remove_from_cart/', views.remove_item, name='remove_item'),
+    path('clear_cart/', views.clear_cart, name='clear_cart'),
+
+    # Orders
     path('orders/', views.OrderList.as_view()),
     path('order/<int:pk>/', views.OrderDetail.as_view()),
+    path('verify-payment/', views.verify_payment, name='verify_payment'),
+    path('contact/', views.ContactList.as_view()),
+    path('faq/', views.FaqList.as_view()),
     ]
-
 urlpatterns+=router.urls
