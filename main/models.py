@@ -1,7 +1,5 @@
 from django.db import models
 from django.contrib.auth.models import User
-# import markdown
-# import bleach
 from ckeditor.fields import RichTextField
 from django.core.mail import send_mail
 
@@ -18,16 +16,6 @@ class Vendor(models.Model):
     def total_vendor_products(self):
         total_products = Product.objects.filter(vendor=self).count()
         return total_products
-    
-# class Vendor(models.Model):
-#     full_name=models.CharField(max_length=150, null=True)
-#     email=models.CharField(max_length=150, null=True)
-#     address=models.CharField(max_length=200, null=True)
-#     mobile=models.CharField(max_length=20, null=True)
-#     password=models.CharField(max_length=100, null=True)
-
-#     def __str__(self):
-#         return self.full_name
 
 # Main Category
 class MainCategory(models.Model):
@@ -105,23 +93,7 @@ class Customer(models.Model):
     def total_customer_addresses(self):
         total_addresses = CustomerAddress.objects.filter(customer=self).count()
         return total_addresses
-
-# Order Model
-class Order(models.Model):
-    customer = models.ForeignKey(Customer, on_delete=models.CASCADE)
-    order_time = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        # return '%s' % (self.order_time)
-        return self.customer.user.first_name
-
-class OrderItem(models.Model):
-    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='order_items')
-    product = models.ForeignKey(Product, on_delete=models.CASCADE)
-
-    def __str__(self):
-        return self.product.title
-
+    
 # Customer Address Model
 class CustomerAddress(models.Model):
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='customer_addresses')
@@ -133,6 +105,26 @@ class CustomerAddress(models.Model):
 
     def __str__(self):
         return self.street_address 
+
+# Order Model
+class Order(models.Model):
+    customer = models.ForeignKey(Customer, on_delete=models.CASCADE)
+    order_time = models.DateTimeField(auto_now_add=True)
+    address = models.ForeignKey(CustomerAddress, on_delete=models.CASCADE, null=True)
+    total_cost = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+
+    def __str__(self):
+        # return '%s' % (self.order_time)
+        return self.customer.user.first_name
+
+class OrderItem(models.Model):
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='order_items')
+    product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    quantity = models.IntegerField(default=0)
+    price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+
+    def __str__(self):
+        return self.product.title
 
 # Product Ratings and Reviews
 class ProductRating(models.Model):

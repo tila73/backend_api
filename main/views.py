@@ -13,16 +13,12 @@ from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
 from django.db import IntegrityError
-from rest_framework.views import APIView
-from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from django.db.models import Q
 from django.contrib.auth.hashers import make_password
-from rest_framework.permissions import IsAuthenticated
 import requests
 from django.core.mail import send_mail
 from django.conf import settings
-import json
 
 class VendorList(generics.ListCreateAPIView):
     queryset = models.Vendor.objects.all()
@@ -183,6 +179,10 @@ class ProductDetail(generics.RetrieveUpdateDestroyAPIView):
         queryset = self.get_queryset()
         obj = get_object_or_404(queryset, slug=self.kwargs['product_slug'])
         return obj
+    
+class LatestProductsList(generics.ListAPIView):
+    queryset = models.Product.objects.order_by('-id')[:6]
+    serializer_class = serializers.ProductListSerializer
 
 # main category slug, category slug, subcategory slug, product slug garna
 # class ProductDetail(generics.RetrieveAPIView):
@@ -331,11 +331,22 @@ def customer_register(request):
 class OrderList(generics.ListCreateAPIView):
     queryset = models.Order.objects.all()
     serializer_class = serializers.OrderSerializer
+    
+    
+# Order Items
+class OrderItemList(generics.ListCreateAPIView):
+    queryset = models.OrderItem.objects.all()
+    serializer_class = serializers.OrderItemSerializer
 
-    def post(self, request, *args, **kwargs):
-        print(request.POST)
-        return super().post(request, *args, **kwargs)
+class CustomerOrderItemList(generics.ListAPIView):
+    queryset = models.OrderItem.objects.all()
+    serializer_class = serializers.OrderItemSerializer
 
+    def get_queryset(self):
+        qs=super().get_queryset()
+        customer_id=self.kwargs['pk']
+        qs=qs.filter(order__customer__id=customer_id)
+        return qs
 class OrderDetail(generics.ListAPIView):
     #queryset = models.OrderItems.objects.all()
     serializer_class = serializers.OrderDetailSerializer
@@ -413,11 +424,22 @@ class SubCategoryDetail(generics.RetrieveAPIView):
     serializer_class = serializers.SubCategoryDetailSerializer
 
     def get_object(self):
-        # maincategory_slug = self.kwargs.get('maincategory_slug')
+        maincategory_slug = self.kwargs.get('maincategory_slug')
         category_slug = self.kwargs.get('category_slug')
         subcategory_slug = self.kwargs.get('subcategory_slug')
-        return get_object_or_404(models.SubCategory, category__slug=category_slug, slug=subcategory_slug)
-        # return get_object_or_404(models.SubCategory, main_category__slug=maincategory_slug, category__slug=category_slug, slug=subcategory_slug)
+        return get_object_or_404(
+            models.SubCategory, 
+            category__main_category__slug=maincategory_slug,
+            category__slug=category_slug, 
+            slug=subcategory_slug
+        )
+
+    # def get_object(self):
+    #     maincategory_slug = self.kwargs.get('maincategory_slug')
+    #     category_slug = self.kwargs.get('category_slug')
+    #     subcategory_slug = self.kwargs.get('subcategory_slug')
+    #     return get_object_or_404(models.SubCategory, category__slug=category_slug, slug=subcategory_slug)
+    #     # return get_object_or_404(models.SubCategory, main_category__slug=maincategory_slug, category__slug=category_slug, slug=subcategory_slug)
 
 # Brand
 class BrandList(generics.ListCreateAPIView):

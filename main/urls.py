@@ -33,11 +33,18 @@ urlpatterns = [
     # path('product/<int:pk>/', views.ProductDetail.as_view()),
     path('products/<slug:product_slug>/', views.ProductDetail.as_view()),
     # path('<slug:maincategory_slug>/<slug:category_slug>/<slug:subcategory_slug>/<slug:product_slug>/', views.ProductDetail.as_view()),
+    path('latest-products/', views.LatestProductsList.as_view(), name='latest_products'),
 
     # Brands
     path('brands/', views.BrandList.as_view()),
     path('brand/<int:pk>/', views.BrandDetail.as_view()),
     path('brands/<slug:brand_slug>/', views.ProductsByBrand.as_view()),
+
+    # Orders
+    path('orders/', views.OrderList.as_view()),
+    path('order/<int:pk>/', views.OrderDetail.as_view()),
+    path('orderitems/', views.OrderItemList.as_view()),
+    path('customer/<int:pk>/orderitems/', views.CustomerOrderItemList.as_view()),
 
     # Product Categories
     path('main_categories/', views.MainCategoryList.as_view()),
@@ -57,10 +64,8 @@ urlpatterns = [
     path('remove_from_cart/', views.remove_item, name='remove_item'),
     path('clear_cart/', views.clear_cart, name='clear_cart'),
 
-    # Orders
-    path('orders/', views.OrderList.as_view()),
-    path('order/<int:pk>/', views.OrderDetail.as_view()),
     path('verify-payment/', views.verify_payment, name='verify_payment'),
+
     path('contact/', views.ContactList.as_view()),
     path('faq/', views.FaqList.as_view()),
     ]

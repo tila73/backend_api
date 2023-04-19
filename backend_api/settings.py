@@ -32,6 +32,7 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
+    'jazzmin',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -182,6 +183,7 @@ EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_HOST = "smtp.gmail.com"
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER = 'tila.ale00@gmail.com'
-EMAIL_HOST_PASSWORD = 'kiofftbbhdvvbveh'
-CONTACT_EMAIL = 'pamperedpets71@gmail.com'
+EMAIL_HOST_USER = 'pamperedpets71@gmail.com'
+# EMAIL_HOST_PASSWORD = 'kiofftbbhdvvbveh'
+EMAIL_HOST_PASSWORD = 'xglkrgsyagmbzcrv'
+CONTACT_EMAIL = 'tila.ale00@gmail.com'
